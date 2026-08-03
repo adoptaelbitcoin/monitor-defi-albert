@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor DeFi Albert</title>
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#141923; --border:#232B3A; --text:#E6EAF2; --muted:#8A94A6;
+    --eth:#7C8CF8; --crv:#34D39A; --danger:#F2555A; --amber:#F5A524; --wbtc:#F7931A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    padding:20px 14px 60px;
+  }
+  .mono{font-family:'SF Mono',ui-monospace,'Roboto Mono',Consolas,monospace;}
+  .wrap{max-width:920px;margin:0 auto;}
+
+  header{margin-bottom:18px;}
+  h1{font-size:1.35rem;margin:0 0 2px;letter-spacing:.2px;}
+  .sub{color:var(--muted);font-size:.85rem;margin:0 0 14px;}
+
+  .ctxrow{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:14px;
+  }
+  .ctxitem{font-size:.72rem;color:var(--muted);}
+  .ctxitem b{display:block;color:var(--text);font-size:.95rem;font-family:inherit;}
+  .ctxitem .v{font-family:ui-monospace,monospace;}
+  .ctx-spacer{flex:1;min-width:6px;}
+
+  .selectorrow{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+  }
+  select{
+    background:#0F141D;color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:9px 12px;font-size:.9rem;font-family:inherit;
+  }
+  .status{
+    padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:600;
+    border:1px solid var(--border);
+  }
+  .status.below{color:var(--danger);border-color:var(--danger);}
+  .status.in{color:var(--amber);border-color:var(--amber);}
+  .status.above{color:var(--crv);border-color:var(--crv);}
+
+  .warn{
+    background:rgba(242,85,90,.12);border:1px solid var(--danger);color:#ffb3b6;
+    border-radius:10px;padding:10px 14px;font-size:.82rem;margin-bottom:14px;display:none;
+  }
+  .warn.show{display:block;}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:16px;margin-bottom:16px;
+  }
+  .panel h2{font-size:.95rem;margin:0 0 12px;color:var(--text);
+    display:flex;align-items:center;gap:8px;}
+  .panel h2 .n{color:var(--muted);font-weight:400;font-size:.78rem;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:.68rem;color:var(--muted);display:flex;align-items:center;gap:4px;}
+  .field input{
+    background:#0F141D;border:1px solid var(--border);color:var(--text);
+    border-radius:7px;padding:7px 9px;font-size:.85rem;width:100%;font-family:ui-monospace,monospace;
+  }
+  .field input:focus{outline:none;border-color:var(--eth);}
+
+  .derived{
+    margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);
+    display:flex;flex-wrap:wrap;gap:16px;font-size:.78rem;color:var(--muted);
+  }
+  .derived b{color:var(--text);font-family:ui-monospace,monospace;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:16px;}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;
+  }
+  .card .lbl{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:5px;margin-bottom:6px;}
+  .card .val{font-size:1.3rem;font-weight:600;font-family:ui-monospace,monospace;}
+  .card .sub2{font-size:.72rem;color:var(--muted);margin-top:4px;}
+  .card.danger .val{color:var(--danger);}
+  .card.good .val{color:var(--crv);}
+  .card.amber .val{color:var(--amber);}
+  .card.eth .val{color:var(--eth);}
+
+  .qmark{
+    width:15px;height:15px;border-radius:50%;border:1px solid var(--muted);
+    color:var(--muted);background:none;font-size:.65rem;line-height:13px;
+    cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .qmark:hover, .qmark.active{border-color:var(--eth);color:var(--eth);}
+  .tipbox{
+    display:none;background:#0F141D;border:1px solid var(--eth);color:var(--text);
+    font-size:.72rem;padding:8px 10px;border-radius:7px;margin-top:6px;line-height:1.4;
+  }
+  .tipbox.show{display:block;}
+
+  .scenario-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+  .scenario-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+  .sres{background:#0F141D;border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
+  .sres .lbl{font-size:.7rem;color:var(--muted);}
+  .sres .val{font-family:ui-monospace,monospace;font-size:1.05rem;font-weight:600;}
+
+  svg text{font-family:ui-monospace,monospace;}
+
+  .note{font-size:.75rem;color:var(--muted);line-height:1.5;padding:12px 14px;
+    background:var(--panel);border:1px solid var(--border);border-radius:10px;}
+  .note b{color:var(--text);}
+
+  .notes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:12px;}
+  .notecard{background:#0F141D;border:1px solid var(--border);border-radius:10px;padding:14px;}
+  .notecard h3{margin:0 0 8px;font-size:.85rem;display:flex;align-items:center;gap:6px;}
+  .notecard ul{margin:0;padding-left:18px;font-size:.78rem;line-height:1.6;color:var(--text);}
+  .notecard ul li b{font-family:ui-monospace,monospace;}
+  .notecard .tagdot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .jointread{background:#0F141D;border:1px solid var(--border);border-radius:10px;padding:14px;
+    font-size:.8rem;line-height:1.6;color:var(--text);}
+  .jointread b{color:var(--text);}
+
+  .assumewarn{
+    font-size:.7rem;color:var(--amber);margin-top:8px;
+  }
+
+  @media(max-width:600px){
+    .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Monitor DeFi Albert</h1>
+    <p class="sub">Soft-liquidation (LLAMMA) — coste de protección, punto de equilibrio y valor al cierre</p>
+  </header>
+
+  <div class="ctxrow" id="ctxrow"></div>
+
+  <div class="selectorrow">
+    <select id="walletSelect"></select>
+    <span class="status" id="statusBadge">—</span>
+  </div>
+
+  <div class="warn" id="warnBox">⚠ Salud por debajo de 10 — esta posición está cerca del riesgo de liquidación definitiva. Revisa si conviene añadir colateral o repagar deuda.</div>
+
+  <div class="panel">
+    <h2>1 · Datos de la posición <span class="n">— edita cualquier campo, todo recalcula al instante</span></h2>
+    <div class="grid" id="inputGrid"></div>
+    <div class="derived" id="derivedRow"></div>
+    <div class="assumewarn" id="assumeNote"></div>
+  </div>
+
+  <div class="cards" id="cardsRow"></div>
+
+  <div class="panel">
+    <h2>2 · Escenario <span class="n">— ¿cuánto quedaría si cierras a un precio objetivo?</span></h2>
+    <div class="scenario-row" id="scenarioInputs"></div>
+    <div class="scenario-results" id="scenarioResults"></div>
+  </div>
+
+  <div class="panel">
+    <h2>3 · Gráfico <span class="n">— equity de la posición vs. haber holdeado</span></h2>
+    <div id="chartHolder"></div>
+  </div>
+
+  <div class="panel">
+    <h2>4 · Estado del préstamo suave <span class="n">— lectura explicativa, se actualiza sola</span></h2>
+    <div id="notesPanel"></div>
+  </div>
+
+  <div class="note">
+    <b>Nota:</b> estos son cálculos estimados, no asesoramiento financiero. La liquidación definitiva de LlamaLend ocurre cuando la <b>salud llega a 0</b>, no por tocar un precio fijo. El colateral y el precio mostrados por Curve pueden venir de instantes distintos, así que puede haber pequeñas diferencias de redondeo frente a lo que veas en la app.
+  </div>
+
+</div>
+
+<script>
+/* ================= DATOS DE LAS WALLETS ================= */
+const WALLETS = {
+  wbtc: {
+    label: "WBTC · crvUSD",
+    asset: "WBTC",
+    color: "#F7931A",
+    apr7d: 2.43,
+    maxLtv: 89.19,
+    debt: 9120,
+    collat: 19730,
+    apr: 2.04,
+    top: 62958.74,
+    bottom: 42850,
+    price: 63435.95,
+    health: 70.64,
+    lossPct: 2,
+    dep: 0.31,
+    openPrice: 64133.32,
+    borrowed: 15043.90,
+    repaid: 5993.87,
+    assumeBottom: true
+  },
+  eth: {
+    label: "ETH · crvUSD",
+    asset: "ETH",
+    color: "#7C8CF8",
+    apr7d: 2.41,
+    maxLtv: 84,
+    debt: 24770,
+    collat: 40150,
+    apr: 2.01,
+    top: 1611.01,
+    bottom: 1122,
+    price: 1867.73,
+    health: 28.78,
+    lossPct: 2,
+    dep: 21.98,
+    openPrice: 1843.13,
+    borrowed: 30692.32,
+    repaid: 5993.87,
+    assumeBottom: false
+  }
+};
+const GLOBAL = { months: 12, crvUSDPrice: 0.9992, bandFactorA: 100, ammFee: 1.90 };
+
+let current = "wbtc";
+let target = { wbtc: WALLETS.wbtc.price, eth: WALLETS.eth.price };
+
+/* ================= MODELO ================= */
+function bandCalc(s){
+  const band = s.top - s.bottom;
+  const mid = (s.top + s.bottom) / 2;
+  let S, N;
+  if (s.price <= s.bottom) { S = s.collat; N = S / mid; }
+  else if (s.price >= s.top) { N = s.collat / s.price; S = N * mid; }
+  else { N = s.collat / (mid + Math.pow(s.price - s.bottom, 2) / (2 * band)); S = N * mid; }
+  return { S, N, band, mid };
+}
+function valueAt(s, p, SN){
+  const { S, N, band } = SN;
+  if (p <= s.bottom) return S;
+  if (p >= s.top) return N * p;
+  return S + (N / (2 * band)) * Math.pow(p - s.bottom, 2);
+}
+function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
+function travFrac(s, p){
+  const band = s.top - s.bottom;
+  return Math.min(1, Math.abs(clamp(p,s.bottom,s.top) - clamp(s.price,s.bottom,s.top)) / band);
+}
+function compute(s){
+  const SN = bandCalc(s);
+  const lossTotal = (s.lossPct/100) * s.collat;
+  const intYear = s.debt * s.apr/100;
+  const intHorizon = intYear * GLOBAL.months/12;
+  const netAt = (p) => valueAt(s,p,SN) - lossTotal * travFrac(s,p);
+  const eqAt = (p) => netAt(p) - s.debt - intHorizon;
+  const holdEqAt = (p) => s.dep * p - s.debt;
+  const equityNow = s.collat - s.debt;
+  const ltv = s.debt / s.collat;
+  const ttBreakeven = intYear !== 0 ? equityNow / intYear : Infinity;
+  const indiff = SN.S / s.dep;
+  const distLT = (s.price - s.top) / s.price;
+  let status = "in";
+  if (s.price < s.bottom) status = "below";
+  else if (s.price > s.top) status = "above";
+  const interestSoFar = s.debt - (s.borrowed - s.repaid);
+  const depositVal = s.dep * s.openPrice;
+  const lostAsset = Math.max(0, s.dep - SN.N);
+  const lostVal = lostAsset * SN.mid;
+  return { SN, lossTotal, intYear, intHorizon, netAt, eqAt, holdEqAt, equityNow, ltv,
+    ttBreakeven, indiff, distLT, status, interestSoFar, depositVal, lostAsset, lostVal };
+}
+
+/* ================= FORMATTERS ================= */
+const fmt$ = (v, d=2) => (v<0?"-":"") + "$" + Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtN = (v, d=4) => v.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtPct = (v, d=2) => (v*100).toLocaleString? (v*100).toFixed(d)+"%" : (v*100)+"%";
+
+/* ================= TOOLTIPS (definiciones) ================= */
+const DEFS = {
+  equity: "Lo que te quedaría en dólares si cerraras la posición ahora mismo (colateral neto menos deuda).",
+  ltv: "Loan-to-Value: cuánta deuda tienes frente al valor de tu colateral. Más alto = más riesgo.",
+  health: "Indicador propio de Curve de qué tan lejos estás de la liquidación definitiva. Llega a 0 cuando te liquidan.",
+  distLT: "Qué tan lejos está el precio actual del techo de la banda de soft-liquidation (en %).",
+  certCost: "El interés que pagas de forma segura por el préstamo durante el horizonte elegido.",
+  softLoss: "Pérdida estimada por comprar/vender dentro de la banda si el precio la atraviesa (coste de la protección).",
+  breakeven: "En cuántos meses el interés acumulado consumiría tu equity actual, si nada más cambiara.",
+  indiff: "Precio al que te da literalmente igual haber tenido tu posición en Curve o haber holdeado el activo.",
+  deposit: "Valor en dólares de lo que depositaste originalmente, al precio de apertura.",
+  recoverable: "Cuánto del activo (ETH/WBTC) recuperarías si el precio sigue bajando hasta el fondo de la banda.",
+  floor: "Valor en dólares si la posición queda 100% en crvUSD (por debajo de la banda).",
+  realizedLoss: "Pérdida ya materializada por haber cruzado parte de la banda hasta ahora.",
+  accruedInt: "Interés que ya se ha acumulado sobre la deuda desde que abriste la posición.",
+};
+
+/* ================= RENDER ================= */
+function render(){
+  const s = WALLETS[current];
+  const c = compute(s);
+
+  // Header context row
+  document.getElementById("ctxrow").innerHTML = `
+    <div class="ctxitem">APR actual<b class="v">${s.apr}%</b></div>
+    <div class="ctxitem">APR 7d<b class="v">${s.apr7d}%</b></div>
+    <div class="ctxitem">Precio crvUSD<b class="v">$${GLOBAL.crvUSDPrice}</b></div>
+    <div class="ctxitem">Max LTV<b class="v">${s.maxLtv}%</b></div>
+    <div class="ctxitem">Factor banda A<b class="v">${GLOBAL.bandFactorA}</b></div>
+    <div class="ctxitem">Fee AMM<b class="v">${GLOBAL.ammFee}%</b></div>
+    <div class="ctx-spacer"></div>
+  `;
+
+  // status badge
+  const statusLabel = { below: "Bajo rango", in: "En rango (soft-liq)", above: "Sobre rango" };
+  const badge = document.getElementById("statusBadge");
+  badge.textContent = statusLabel[c.status];
+  badge.className = "status " + c.status;
+
+  // warning
+  document.getElementById("warnBox").className = "warn" + (s.health < 10 ? " show" : "");
+
+  // input grid
+  const fields = [
+    ["debt","Deuda (crvUSD)"], ["collat","Colateral (valor $)"], ["apr","APR %"],
+    ["top","Techo banda"], ["bottom","Fondo banda"], ["price","Precio actual"],
+    ["health","Salud"], ["lossPct","Pérdida rebalanceo %"], ["dep", s.asset+" depositado"],
+    ["openPrice","Precio de apertura"], ["borrowed","Prestado total"], ["repaid","Repagado total"]
+  ];
+  document.getElementById("inputGrid").innerHTML = fields.map(([k,l]) => `
+    <div class="field">
+      <label>${l}</label>
+      <input type="number" step="any" data-key="${k}" value="${s[k]}">
+    </div>
+  `).join("");
+  document.querySelectorAll('#inputGrid input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      s[e.target.dataset.key] = parseFloat(e.target.value) || 0;
+      render();
+    });
+  });
+
+  document.getElementById("derivedRow").innerHTML = `
+    <span>Depósito original: <b>${fmt$(c.depositVal,2)}</b></span>
+    <span>${s.asset} recuperable si baja al fondo (N): <b>${fmtN(c.SN.N)} ${s.asset}</b></span>
+    <span>Fondo en $ (S): <b>${fmt$(c.SN.S,2)}</b></span>
+    <span>Pérdida ya realizada: <b>${fmt$(c.lostVal,2)}</b></span>
+    <span>Interés acumulado: <b>${fmt$(c.interestSoFar,2)}</b></span>
+  `;
+  document.getElementById("assumeNote").textContent = s.assumeBottom
+    ? "⚠ El \"fondo de banda\" para esta posición es una estimación leída parcialmente del gráfico de Curve — verifícalo activando \"Bands\" en el gráfico de la posición y corrígelo arriba si difiere."
+    : "";
+
+  // cards
+  document.getElementById("cardsRow").innerHTML = `
+    <div class="card ${c.equityNow>=0?'good':'danger'}">
+      <div class="lbl">${qm('equity')} Equity si cierras hoy</div>
+      <div class="val">${fmt$(c.equityNow,2)}</div>
+      <div class="sub2">LTV: ${(c.ltv*100).toFixed(1)}%</div>
+    </div>
+    <div class="card ${s.health<10?'danger':(s.health<30?'amber':'good')}">
+      <div class="lbl">${qm('health')} Salud</div>
+      <div class="val">${s.health.toFixed(2)}</div>
+      <div class="sub2">${qm('distLT')} Distancia al techo: ${(c.distLT*100).toFixed(2)}%</div>
+    </div>
+    <div class="card amber">
+      <div class="lbl">${qm('certCost')} Coste cierto (interés, ${GLOBAL.months}m)</div>
+      <div class="val">${fmt$(c.intHorizon,2)}</div>
+      <div class="sub2">${fmt$(c.intYear,2)}/año</div>
+    </div>
+    <div class="card danger">
+      <div class="lbl">${qm('softLoss')} Pérdida soft-liq estimada</div>
+      <div class="val">${fmt$(c.lossTotal,2)}</div>
+      <div class="sub2">si cruza toda la banda</div>
+    </div>
+    <div class="card eth">
+      <div class="lbl">${qm('breakeven')} Equilibrio por interés</div>
+      <div class="val">${isFinite(c.ttBreakeven)?c.ttBreakeven.toFixed(1)+" meses":"—"}</div>
+      <div class="sub2">para agotar el equity actual</div>
+    </div>
+  `;
+
+  // horizon field (append to cards row area via separate control)
+  let horizonRow = document.getElementById("horizonRow");
+  if(!horizonRow){
+    horizonRow = document.createElement("div");
+    horizonRow.id = "horizonRow";
+    horizonRow.className = "field";
+    horizonRow.style.maxWidth = "220px";
+    horizonRow.style.margin = "0 0 16px";
+    document.getElementById("cardsRow").insertAdjacentElement("afterend", horizonRow);
+  }
+  horizonRow.innerHTML = `<label>Horizonte de interés (meses)</label><input type="number" id="monthsInput" value="${GLOBAL.months}" style="background:#0F141D;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 9px;font-size:.85rem;width:140px;font-family:ui-monospace,monospace;">`;
+  document.getElementById("monthsInput").addEventListener('input', e=>{
+    GLOBAL.months = parseFloat(e.target.value) || 0;
+    render();
+  });
+
+  // scenario
+  document.getElementById("scenarioInputs").innerHTML = `
+    <div class="field" style="max-width:200px;">
+      <label>Precio objetivo (${s.asset})</label>
+      <input type="number" step="any" id="targetInput" value="${target[current]}">
+    </div>
+  `;
+  document.getElementById("targetInput").addEventListener('input', e=>{
+    target[current] = parseFloat(e.target.value) || 0;
+    renderScenario();
+  });
+  renderScenario();
+
+  // tooltip click handlers
+  document.querySelectorAll('.qmark').forEach(q=>{
+    q.onclick = () => {
+      const box = q.nextElementSibling;
+      const wasOpen = box.classList.contains('show');
+      document.querySelectorAll('.tipbox').forEach(b=>b.classList.remove('show'));
+      document.querySelectorAll('.qmark').forEach(b=>b.classList.remove('active'));
+      if(!wasOpen){ box.classList.add('show'); q.classList.add('active'); }
+    };
+  });
+
+  drawChart(s, c);
+  renderNotes();
+}
+
+function qm(key){
+  return `<button class="qmark" type="button">?</button><div class="tipbox">${DEFS[key]}</div>`;
+}
+
+function renderScenario(){
+  const s = WALLETS[current];
+  const c = compute(s);
+  const t = target[current];
+  const sColNet = c.netAt(t);
+  const sEq = sColNet - s.debt - c.intHorizon;
+  const sRet = c.equityNow !== 0 ? (sEq/c.equityNow - 1) : 0;
+  const sVsHold = sEq - c.holdEqAt(t);
+
+  document.getElementById("scenarioResults").innerHTML = `
+    <div class="sres"><div class="lbl">Valor colateral neto</div><div class="val">${fmt$(sColNet,2)}</div></div>
+    <div class="sres"><div class="lbl">Equity al cerrar</div><div class="val" style="color:${sEq>=0?'var(--crv)':'var(--danger)'}">${fmt$(sEq,2)}</div></div>
+    <div class="sres"><div class="lbl">Rendimiento vs. hoy</div><div class="val" style="color:${sRet>=0?'var(--crv)':'var(--danger)'}">${(sRet*100).toFixed(2)}%</div></div>
+    <div class="sres"><div class="lbl">${qm('indiff')} Precio de indiferencia</div><div class="val">${fmt$(c.indiff,2)}</div></div>
+    <div class="sres"><div class="lbl">Vs. haber holdeado</div><div class="val" style="color:${sVsHold>=0?'var(--crv)':'var(--danger)'}">${fmt$(sVsHold,2)}</div></div>
+  `;
+  document.querySelectorAll('#scenarioResults .qmark').forEach(q=>{
+    q.onclick = () => {
+      const box = q.nextElementSibling;
+      const wasOpen = box.classList.contains('show');
+      document.querySelectorAll('.tipbox').forEach(b=>b.classList.remove('show'));
+      if(!wasOpen){ box.classList.add('show'); }
+    };
+  });
+}
+
+/* ================= NOTAS EXPLICATIVAS ================= */
+function healthQual(h){
+  if(h>=50) return "muy saludable";
+  if(h>=20) return "saludable, sin apuro";
+  if(h>=10) return "ajustada — vale la pena vigilarla";
+  return "en riesgo — cerca de liquidación definitiva";
+}
+function statusText(status){
+  return { below:"bajo rango (100% en crvUSD)", in:"dentro de la banda de soft-liquidation ahora mismo",
+    above:"sobre rango (100% en el activo, aún no ha tocado la banda)" }[status];
+}
+function buildNoteFor(key){
+  const s = WALLETS[key];
+  const c = compute(s);
+  const intYearFmt = fmt$(c.intYear,0);
+  const accruedFmt = fmt$(c.interestSoFar,0);
+  const lossFmt = fmt$(c.lossTotal,0);
+  const ltvPct = (c.ltv*100).toFixed(1);
+  const distPct = (c.distLT*100).toFixed(2);
+  const breakevenTxt = isFinite(c.ttBreakeven) ? c.ttBreakeven.toFixed(0)+" meses" : "no aplica (sin interés)";
+  return { s, c, html: `
+    <div class="notecard">
+      <h3><span class="tagdot" style="background:${s.color}"></span> ${s.label}</h3>
+      <ul>
+        <li><b>Estado:</b> ${statusText(c.status)}.</li>
+        <li><b>Salud ${s.health.toFixed(2)}</b> — ${healthQual(s.health)}.</li>
+        <li><b>Distancia al techo:</b> ${distPct}% ${Math.abs(c.distLT)<0.02 ? "(muy pegado, cualquier caída chica ya entra en banda)" : ""}</li>
+        <li><b>LTV:</b> ${ltvPct}% de un máximo de ${s.maxLtv}%.</li>
+        <li><b>Coste cierto:</b> ~${intYearFmt}/año de interés (${accruedFmt} acumulados hasta ahora).</li>
+        <li><b>Pérdida potencial por rebalanceo:</b> ~${lossFmt} si el precio cruza toda la banda.</li>
+        <li><b>Punto de equilibrio:</b> el interés tardaría ~${breakevenTxt} en consumir el equity actual.</li>
+      </ul>
+    </div>`};
+}
+function buildJointReading(a, b){
+  const moreLtv = a.c.ltv > b.c.ltv ? a.s : b.s;
+  const lessLtv = a.c.ltv > b.c.ltv ? b.s : a.s;
+  const tighterDist = Math.abs(a.c.distLT) < Math.abs(b.c.distLT) ? a.s : b.s;
+  const shorterBE = (isFinite(a.c.ttBreakeven)?a.c.ttBreakeven:Infinity) < (isFinite(b.c.ttBreakeven)?b.c.ttBreakeven:Infinity) ? a.s : b.s;
+  const bothSafe = a.s.health >= 10 && b.s.health >= 10;
+  return `
+    <div class="jointread">
+      <p>${bothSafe ? "Ninguna de las dos posiciones está en riesgo inmediato de liquidación (ambas con salud ≥ 10)." : "⚠ Al menos una posición tiene salud por debajo de 10 — revisar con prioridad."}</p>
+      <p><b>${moreLtv.label}</b> es la más apalancada (mayor LTV), mientras que <b>${lessLtv.label}</b> es la más conservadora en ese frente.</p>
+      <p><b>${tighterDist.label}</b> tiene el precio más pegado al techo de su banda — es la que primero entraría en soft-liquidation si el mercado retrocede.</p>
+      <p><b>${shorterBE.label}</b> tiene menos colchón estructural: el interés consumiría su equity actual en menos tiempo si nada más cambiara.</p>
+    </div>`;
+}
+function renderNotes(){
+  const notes = Object.keys(WALLETS).map(k => buildNoteFor(k));
+  document.getElementById("notesPanel").innerHTML =
+    `<div class="notes-grid">${notes.map(n=>n.html).join("")}</div>` +
+    (notes.length===2 ? buildJointReading(notes[0], notes[1]) : "");
+}
+
+/* ================= CHART (SVG hecho a mano) ================= */
+function drawChart(s, c){
+  const W = 700, H = 320, padL = 60, padR = 20, padT = 20, padB = 36;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+
+  const xMin = s.bottom * 0.75;
+  const xMax = s.top * 1.35;
+  const N = 80;
+  const pts = [];
+  for(let i=0;i<=N;i++){
+    const p = xMin + (xMax-xMin)*i/N;
+    pts.push({p, eq: c.eqAt(p), hold: c.holdEqAt(p)});
+  }
+  let yMin = Math.min(...pts.map(d=>Math.min(d.eq,d.hold)));
+  let yMax = Math.max(...pts.map(d=>Math.max(d.eq,d.hold)));
+  const pad = (yMax-yMin)*0.08 || 1;
+  yMin -= pad; yMax += pad;
+
+  const X = (p) => padL + (p-xMin)/(xMax-xMin)*chartW;
+  const Y = (v) => padT + (1-(v-yMin)/(yMax-yMin))*chartH;
+
+  const pathFor = (key) => pts.map((d,i)=> (i===0?"M":"L") + X(d.p).toFixed(1) + "," + Y(d[key]).toFixed(1)).join(" ");
+
+  // grid lines (y)
+  const gridN = 5;
+  let gridLines = "";
+  for(let i=0;i<=gridN;i++){
+    const v = yMin + (yMax-yMin)*i/gridN;
+    const y = Y(v);
+    gridLines += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#232B3A" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-8}" y="${(y+3).toFixed(1)}" fill="#8A94A6" font-size="10" text-anchor="end">${fmt$(v,0)}</text>`;
+  }
+
+  // band shading
+  const bx1 = X(s.bottom), bx2 = X(s.top);
+  const bandRect = `<rect x="${bx1.toFixed(1)}" y="${padT}" width="${(bx2-bx1).toFixed(1)}" height="${chartH}" fill="${s.color}" opacity="0.10"/>`;
+
+  // reference lines
+  const priceX = X(s.price);
+  const topX = X(s.top);
+  const refLines = `
+    <line x1="${priceX.toFixed(1)}" y1="${padT}" x2="${priceX.toFixed(1)}" y2="${padT+chartH}" stroke="#F5A524" stroke-width="1.2" stroke-dasharray="4,3"/>
+    <text x="${priceX.toFixed(1)}" y="${padT-6}" fill="#F5A524" font-size="10" text-anchor="middle">precio actual</text>
+    <line x1="${topX.toFixed(1)}" y1="${padT}" x2="${topX.toFixed(1)}" y2="${padT+chartH}" stroke="#F2555A" stroke-width="1" stroke-dasharray="2,3"/>
+    <text x="${topX.toFixed(1)}" y="${padT+chartH+16}" fill="#F2555A" font-size="10" text-anchor="middle">techo</text>
+  `;
+
+  // x axis labels (bottom, top, min, max)
+  const xLabels = [xMin, s.bottom, s.top, xMax].map(v=>{
+    const x = X(v);
+    return `<text x="${x.toFixed(1)}" y="${H-padB+16}" fill="#8A94A6" font-size="9" text-anchor="middle">${fmt$(v,0)}</text>`;
+  }).join("");
+
+  const svg = `
+  <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+    ${gridLines}
+    ${bandRect}
+    <path d="${pathFor('hold')}" fill="none" stroke="#8A94A6" stroke-width="2" stroke-dasharray="5,4"/>
+    <path d="${pathFor('eq')}" fill="none" stroke="${s.color}" stroke-width="2.4"/>
+    ${refLines}
+    ${xLabels}
+    <circle cx="${priceX.toFixed(1)}" cy="${Y(c.eqAt(s.price)).toFixed(1)}" r="4" fill="${s.color}"/>
+    <rect x="${padL}" y="${padT}" width="${chartW}" height="${chartH}" fill="none" stroke="#232B3A"/>
+  </svg>
+  <div style="display:flex;gap:16px;margin-top:8px;font-size:.72rem;color:var(--muted);">
+    <span><span style="display:inline-block;width:14px;height:2.4px;background:${s.color};vertical-align:middle;margin-right:5px;"></span>Equity de la posición</span>
+    <span><span style="display:inline-block;width:14px;height:2px;background:#8A94A6;vertical-align:middle;margin-right:5px;border-top:2px dashed #8A94A6;"></span>Si hubieras holdeado ${s.asset}</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:${s.color};opacity:.2;vertical-align:middle;margin-right:5px;"></span>Banda soft-liq</span>
+  </div>`;
+  document.getElementById("chartHolder").innerHTML = svg;
+}
+
+/* ================= INIT ================= */
+const sel = document.getElementById("walletSelect");
+Object.keys(WALLETS).forEach(k=>{
+  const opt = document.createElement("option");
+  opt.value = k; opt.textContent = WALLETS[k].label;
+  sel.appendChild(opt);
+});
+sel.value = current;
+sel.addEventListener('change', e=>{ current = e.target.value; render(); });
+
+render();
+</script>
+</body>
+</html>
